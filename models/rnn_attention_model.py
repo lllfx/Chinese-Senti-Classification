@@ -160,6 +160,7 @@ class RnnAttentionModel(nn.Module):
 
         max_seq_len = torch.max(seq_lens).item()
         mask = seq_mask(seq_lens, max_seq_len)  # [b,msl]
+        mask = mask.to(text.device)
         # print(max_seq_len)
         # print(mask)
         att = mask_softmax(att, mask)  # [b,msl]

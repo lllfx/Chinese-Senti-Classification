@@ -5,9 +5,12 @@ from tqdm import tqdm
 from models.text_cnn_model import TextCnnModel
 from models.rnn_model import RnnModel
 from models.rnn_attention_model import RnnAttentionModel
+from models.dpcnn_model import DPCNNModel
+from models.rcnn_model import RCNNModel
 from torch.utils.data import DataLoader, Dataset
 from entity import FastTextConfig
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
 fast_text_config = FastTextConfig()
 fast_text_config.vocab_path = 'ChnSentiCorp/vocab.json'
 fast_text_config.train_path = 'ChnSentiCorp/train.txt'
@@ -39,8 +42,11 @@ dev_dataloader = DataLoader(TextDataSet(dev_data), shuffle=False, batch_size=BAT
 # model = TextCnnModel(len(vocab), fast_text_config.num_classes, fast_text_config.pad_size,
 #                      padding_idx=len(vocab) - 1)
 
-model = RnnAttentionModel(len(vocab), fast_text_config.num_classes, padding_idx=len(vocab) - 1)
+# model = RnnAttentionModel(len(vocab), fast_text_config.num_classes, padding_idx=len(vocab) - 1)
+# model = DPCNNModel(len(vocab), fast_text_config.num_classes, num_filters=250, padding_idx=len(vocab) - 1)
+model = RCNNModel(len(vocab), fast_text_config.num_classes, padding_idx=len(vocab) - 1)
 print(model.parameters)
+model = model.to(device)
 
 LR = 1e-3
 EPOCHS = 20
@@ -57,7 +63,9 @@ for epoch in range(EPOCHS):
     for batch_idx, source in enumerate(tqdm(train_dataloader), start=1):
         optimizer.zero_grad()
         label, seq_lens, x1, x2, x3 = source
-        out = model.forward(x1, seq_lens)
+        x1 = x1.to(device)
+        label = label.to(device)
+        out = model.forward(x1)
 
         loss = criterion(out, label)
         total_loss += loss.item()
@@ -77,7 +85,9 @@ for epoch in range(EPOCHS):
     total = 0
     for batch_idx, source in enumerate(tqdm(dev_dataloader), start=1):
         label, seq_lens, x1, x2, x3 = source
-        out = model.forward(x1, seq_lens)
+        x1 = x1.to(device)
+        label = label.to(device)
+        out = model.forward(x1)
 
         _, predicted = torch.max(out.data, 1)
         total += predicted.shape[0]
